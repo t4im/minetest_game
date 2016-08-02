@@ -159,6 +159,8 @@ local drop = function(pos, itemstack)
 	end
 end
 
+local player_inventory_lists = { "main", "craft" }
+
 minetest.register_on_dieplayer(function(player)
 
 	local bones_mode = minetest.setting_get("bones_mode") or "bones"
@@ -191,19 +193,12 @@ minetest.register_on_dieplayer(function(player)
 	end
 
 	if bones_mode == "drop" then
-
-		-- drop inventory items
-		for i = 1, player_inv:get_size("main") do
-			drop(pos, player_inv:get_stack("main", i))
+		for _, list_name in ipairs(player_inventory_lists) do
+			for i = 1, player_inv:get_size(list_name) do
+				drop(pos, player_inv:get_stack(list_name, i))
+			end
+			player_inv:set_list(list_name, {})
 		end
-		player_inv:set_list("main", {})
-
-		-- drop crafting grid items
-		for i = 1, player_inv:get_size("craft") do
-			drop(pos, player_inv:get_stack("craft", i))
-		end
-		player_inv:set_list("craft", {})
-
 		drop(pos, ItemStack("bones:bones"))
 		return
 	end
@@ -214,20 +209,18 @@ minetest.register_on_dieplayer(function(player)
 	local meta = minetest.get_meta(pos)
 	local inv = meta:get_inventory()
 	inv:set_size("main", 8 * 4)
-	inv:set_list("main", player_inv:get_list("main"))
 
-	for i = 1, player_inv:get_size("craft") do
-		local stack = player_inv:get_stack("craft", i)
-		if inv:room_for_item("main", stack) then
-			inv:add_item("main", stack)
-		else
-			--drop if no space left
-			drop(pos, stack)
+	for _, list_name in ipairs(player_inventory_lists) do
+		for i = 1, player_inv:get_size(list_name) do
+			local stack = player_inv:get_stack(list_name, i)
+			if inv:room_for_item(list_name, stack) then
+				inv:add_item(list_name, stack)
+			else -- no space left
+				drop(pos, stack)
+			end
 		end
+		player_inv:set_list(list_name, {})
 	end
-
-	player_inv:set_list("main", {})
-	player_inv:set_list("craft", {})
 
 	meta:set_string("formspec", bones_formspec)
 	meta:set_string("owner", player_name)
@@ -246,3 +239,8 @@ minetest.register_on_dieplayer(function(player)
 		meta:set_string("infotext", player_name.."'s bones")
 	end
 end)
+
+
+bones = {
+	player_inventory_lists = player_inventory_lists,
+}
